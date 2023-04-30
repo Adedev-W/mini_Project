@@ -1,16 +1,42 @@
+const today = new Date();
+const currentMonth = today.getMonth();
+let fridayCount = 0;
+const fridayList = [];
 
-function hitungMingguSekarang() {
-  var hariIni = new Date();
-  var awalBulan = new Date(hariIni.getFullYear(), hariIni.getMonth(), 1);
-  var hariKe = hariIni.getDate();
-  var hariPertama = awalBulan.getDay();
-  var jumlahHari = new Date(hariIni.getFullYear(), hariIni.getMonth() + 1, 0).getDate();
-  var jumlahMinggu = Math.ceil((jumlahHari + hariPertama) / 7);
-  var mingguSekarang = Math.ceil((hariKe + hariPertama) / 7);
-  return mingguSekarang;
+for (let date = 1; date <= new Date(today.getFullYear(), currentMonth + 1, 0).getDate(); date++) {
+  const currentDate = new Date(today.getFullYear(), currentMonth, date);
+  if (currentDate.getDay() === 5) { // 5 untuk Jumat
+    fridayCount++;
+    fridayList.push(currentDate.getDate());
+  }
 }
 
+console.log(`Bulan ini ada ${fridayCount} hari Jumat: ${fridayList.join(', ')}.`);
+
+const currentDate = today.getDate();
+let nila = [];
+let selectedValue = null;
+
+for (let i = 0; i < fridayList.length; i++) {
+  if (fridayList[i] > currentDate && (selectedValue === null || fridayList[i] < selectedValue)) {
+    selectedValue = fridayList[i];
+  } else if (fridayList[i] === currentDate) {
+    selectedValue = fridayList[i];
+    break;
+  }
+}
+
+if (selectedValue !== null) {
+  console.log("Array yang dipilih adalah " + selectedValue);
+} else {
+  console.log("Tidak ada array yang melebihi value.");
+}
+
+
+
+
 function cekGanjilGenap(angka) {
+  console.log(angka);
   if (angka % 2 === 0) {
     return "Genap";
   } else {
@@ -40,7 +66,7 @@ function getTanggalIndonesia(date) {
 }
 var tanggalSekarang = new Date();
 var tanggalIndonesia = getTanggalIndonesia(tanggalSekarang);
-var textBar = `Karena hari ini adalah minggu ${cekGanjilGenap(hitungMingguSekarang())} maka menggunakan seragam ${cekSeragam(cekGanjilGenap(hitungMingguSekarang()))}`
+var textBar = `Karena hari ini adalah minggu ${cekGanjilGenap(selectedValue)} maka menggunakan seragam ${cekSeragam(cekGanjilGenap(selectedValue))}`
 console.log(textBar);
 document.getElementById("instruction").innerHTML = textBar;
 document.getElementById("date").innerHTML = tanggalIndonesia;
