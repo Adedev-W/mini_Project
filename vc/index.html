@@ -20,56 +20,70 @@
       const remoteAudio = document.getElementById("remoteAudio");
       const startBtn = document.getElementById("startBtn");
 
+      // ganti dengan host ngrok-mu
       const ws = new WebSocket(`wss://14eb-114-10-142-211.ngrok-free.app/ws/${roomId}/${userId}`);
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       });
 
-      // 1) Tangkap audio lokal dan kirim track ke PeerConnection
+      // 1) Ambil mic dan pasang ke PC
       async function startLocal() {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         localAudio.srcObject = stream;
         stream.getTracks().forEach((t) => pc.addTrack(t, stream));
       }
 
-      // 2) Ketika mendapat track remote, set ke audio element
+      // 2) Pasang remote track ke audio element
       pc.ontrack = (e) => {
         remoteAudio.srcObject = e.streams[0];
       };
 
-      // 3) Tangani ICE candidate: kirim ke signaling
+      // 3) Kirim ICE candidates ke server
       pc.onicecandidate = (e) => {
         if (e.candidate) {
           ws.send(JSON.stringify({ type: "ice", candidate: e.candidate }));
         }
       };
 
-      // 4) Tangani pesan dari signaling server
+      // 4) Tangani pesan signaling
       ws.onmessage = async (evt) => {
         const msg = JSON.parse(evt.data);
 
-        if (msg.type === "offer") {
-          await pc.setRemoteDescription(msg.offer);
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          ws.send(JSON.stringify({ type: "answer", answer }));
-        } else if (msg.type === "answer") {
-          await pc.setRemoteDescription(msg.answer);
-        } else if (msg.type === "ice") {
-          await pc.addIceCandidate(msg.candidate);
+        switch (msg.type) {
+          case "offer":
+            // terima offer dari peer, setRemote → buat answer → kirim answer
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            ws.send(JSON.stringify({ type: "answer", answer }));
+            break;
+
+          case "answer":
+            // hanya terima answer jika kita sudah punya local-offer
+            if (pc.signalingState === "have-local-offer") {
+              await pc.setRemoteDescription(new RTCSessionDescription(msg.answer));
+            }
+            break;
+
+          case "ice":
+            // tambahkan ICE candidate
+            try {
+              await pc.addIceCandidate(msg.candidate);
+            } catch (e) {
+              console.warn("addIceCandidate error:", e);
+            }
+            break;
         }
       };
 
-      // 5) Mulai koneksi: host membuat offer, listener menunggu offer
+      // 5) Klik Start: ambil mic, buat & kirim offer
       startBtn.onclick = async () => {
+        startBtn.disabled = true;
         await startLocal();
-        // Hanya host yang memulai offer; kita anggap siapa pun yang klik pertama adalah host
+
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         ws.send(JSON.stringify({ type: "offer", offer }));
-        startBtn.disabled = true;
       };
     </script>
   </body>
